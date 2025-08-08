@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"strconv"
 	"study-gin/internal/models"
@@ -21,18 +23,28 @@ func NewUserHandler(repo repository.UserRepository) *UserHandler {
 
 func (uh *UserHandler) GetUserByUuid(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
+	if err != nil || id <= 0 {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid User Id",
 		})
-
 		return
 	}
 
-	uh.repo.FindByUuid(id)
+	userResponse, err := uh.repo.FindByUuid(id)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"data": "Get User By UUID",
+		"user id": userResponse.Id,
+		"name":    userResponse.Name,
+		"email":   userResponse.Email,
 	})
 }
 
@@ -42,14 +54,17 @@ func (uh *UserHandler) CreateUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
-
 		return
 	}
 
-	uh.repo.Create(user)
+	if err := uh.repo.Create(user); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"data": "Create User",
 	})
 }
-
