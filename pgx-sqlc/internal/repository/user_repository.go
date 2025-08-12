@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
-	"log"
 	"study-gin/internal/db/sqlc"
+
+	"github.com/google/uuid"
 )
 
 type SQLUserRepository struct {
@@ -26,6 +27,13 @@ func (ur *SQLUserRepository) Create(ctx context.Context, input sqlc.CreateUserPa
 	return user, nil
 }
 
-func (ur *SQLUserRepository) FindByUuid(id int) {
-	log.Println("Find By UUID")
+func (ur *SQLUserRepository) FindByUuid(ctx context.Context, uuid uuid.UUID) (sqlc.User, error) {
+
+	user, err := ur.db.GetUser(ctx, uuid)
+
+	if err != nil {
+		return sqlc.User{}, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return user, nil
 }
